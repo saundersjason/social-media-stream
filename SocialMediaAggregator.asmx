@@ -15,6 +15,7 @@ using System.Security.Cryptography;
 using System.Web;
 using System.Web.Script.Serialization;
 using System.Web.Services;
+using System.Xml.Linq;
 
 [WebService(Namespace = "http://simba.savannahstate.edu/socialstreamservice/",Description="Returns all social media posts.")]
 [WebServiceBinding(ConformsTo = WsiProfiles.BasicProfile1_1)]
@@ -33,13 +34,231 @@ public class SocialMediaAggregator : System.Web.Services.WebService
 
     public SocialMediaAggregator()
     {
-        //
-        // TODO: Add any constructor code required
-        //
     }
 
+    [WebMethod(CacheDuration = 3600)]
+    public BloggerPost GetBloggerPost(String postId)
+    {
+        String bloggerFeed = "";
+        bloggerFeed = GetAllBloggerFeed();
+
+        if (!string.IsNullOrEmpty(bloggerFeed))
+        {
+            BloggerPosts bloggerPosts = new JavaScriptSerializer().Deserialize<BloggerPosts>(bloggerFeed);
+
+            if (bloggerPosts.items.Count() > 0)
+            {
+                BloggerPost post = bloggerPosts.items.Find(p => p.id == postId);
+                try
+                {
+                    post.DatePublished = Convert.ToDateTime(post.published);
+                }
+                catch (Exception ex)
+                {
+                    return null;
+                }
+                return post;
+            }
+            else
+            {
+                return null;
+            }
+        }
+        else
+        {
+            return null;
+        }
+    }
+
+    [WebMethod(CacheDuration = 3600)]
+    public List<BloggerPost> GetBloggerPosts(Int16 numberOfPosts)
+    {
+        String bloggerFeed = "";
+        bloggerFeed = GetAllBloggerFeed();
+
+        List<BloggerPost> posts = new List<BloggerPost>();
+
+        if (!string.IsNullOrEmpty(bloggerFeed))
+        {
+            BloggerPosts bloggerPosts = new JavaScriptSerializer().Deserialize<BloggerPosts>(bloggerFeed);
+
+            if (bloggerPosts.items.Count() > 0)
+            {
+                if (numberOfPosts > 0)
+                {
+                    posts = bloggerPosts.items.Take(numberOfPosts).ToList();
+                }
+                else
+                {
+                    posts = bloggerPosts.items;
+                }
+                foreach (BloggerPost post in posts)
+                {
+                    try
+                    {
+                        post.DatePublished = Convert.ToDateTime(post.published);
+                    }
+                    catch (Exception ex)
+                    {
+                        return null;
+                    }
+                }
+                return posts;
+            }
+            else
+            {
+                return null;
+            }
+        }
+        else
+        {
+            return null;
+        }
+    }
+
+    [WebMethod()]
+    public void GetPostsRSS()
+    {
+
+
+
+
+        
+
+        Context.Response.Clear();
+        Context.Response.ContentType = "application/xml";
+        
+        
+
+        
+        
+        
+        
+        
+        
+        String bloggerFeed = "";
+        bloggerFeed = GetAllBloggerFeed();
+        List<BloggerPost> posts = new List<BloggerPost>();
+
+        if (!string.IsNullOrEmpty(bloggerFeed))
+        {
+            BloggerPosts bloggerPosts = new JavaScriptSerializer().Deserialize<BloggerPosts>(bloggerFeed);
+
+            if (bloggerPosts.items.Count() > 0)
+            {
+                posts = bloggerPosts.items.Take(10).ToList();
+
+                foreach (BloggerPost post in posts)
+                {
+                    try
+                    {
+                        post.DatePublished = Convert.ToDateTime(post.published);
+                    }
+                    catch (Exception ex)
+                    {
+
+                    }
+
+                    try
+                    {
+                        post.content = Regex.Replace(post.content, @"(<img\/?[^>]+>)", @"", RegexOptions.IgnoreCase);
+                    }
+                    catch (Exception ex)
+                    {
+
+                    }
+                }
+
+
+                
+                
+                
+
+                
+                //temp = temp.Replace("<?xml version=\"1.0\" encoding=\"utf-8\" ?>","");
+                //temp = temp.Replace("<string xmlns=\"http://simba.savannahstate.edu/socialstreamservice/\">", "");
+                //temp = temp.Replace("</string>","");
+
+
+                //return temp;
+            }
+            else
+            {
+                //return null;
+            }
+        }
+        else
+        {
+            //return null;
+        }
+        var rss = new XElement("channel",
+                from p in posts
+                select new XElement("item",
+                               new XElement("title", p.title),
+                               new XElement("pubDate", p.DatePublished),
+                               new XElement("description", p.content),
+                               new XElement("link", "social-media/highlight.shtml?id=" + p.id)
+                           ));
+
+        Context.Response.Flush();
+        Context.Response.Write("<rss version=\"2.0\">" +  rss.ToString() + "</rss>");
+    }
+
+    [WebMethod(CacheDuration = 3600)]
+    public List<BloggerPost> QueryBloggerTags(String tag)
+    {
+        String bloggerFeed = "";
+        bloggerFeed = GetAllBloggerFeed();
+
+        List<BloggerPost> posts = new List<BloggerPost>();
+
+        if (!string.IsNullOrEmpty(bloggerFeed))
+        {
+            BloggerPosts bloggerPosts = new JavaScriptSerializer().Deserialize<BloggerPosts>(bloggerFeed);
+
+            if (bloggerPosts.items.Count() > 0)
+            {
+                posts = bloggerPosts.items.Where(p => p.labels.Contains(tag)).ToList();
+
+                foreach (BloggerPost post in posts)
+                {
+                    try
+                    {
+                        post.DatePublished = Convert.ToDateTime(post.published);
+                    }
+                    catch (Exception ex)
+                    {
+
+                    }
+
+                    try
+                    {
+                        post.content = Regex.Replace(post.content, @"(<img\/?[^>]+>)", @"", RegexOptions.IgnoreCase);
+                    }
+                    catch (Exception ex)
+                    {
+
+                    }
+                }
+                return posts;
+            }
+            else
+            {
+                return null;
+            }
+        }
+        else
+        {
+            return null;
+        }
+    }
+    
+    
+    
+    
+    
     [WebMethod(CacheDuration = 40)]
-    public List<SocialMediaPost> GetPosts(Int32 numberOfPosts, String mediaType) {
+    public List<SocialMediaPost> GetAllSocialPosts(Int32 numberOfPosts, String mediaType) {
         posts = new List<SocialMediaPost>();
         List<SocialMediaPost> sortedPosts;
         if(mediaType == "instagram" || mediaType == "all"){
@@ -420,6 +639,33 @@ public class SocialMediaAggregator : System.Web.Services.WebService
         
     }
 
+    private String GetAllBloggerFeed()
+    {
+        String feed = "";
+        HttpWebRequest request = (HttpWebRequest)WebRequest.Create("https://www.googleapis.com/blogger/v3/blogs/5797214299173121016/posts?key="+System.Configuration.ConfigurationManager.AppSettings["blogger_key"]);
+
+        try
+        {
+            WebResponse response = request.GetResponse();
+            using (Stream responseStream = response.GetResponseStream())
+            {
+                StreamReader reader = new StreamReader(responseStream, Encoding.UTF8);
+                feed = reader.ReadToEnd();
+                return feed;
+            }
+        }
+        catch (WebException ex)
+        {
+            WebResponse errorResponse = ex.Response;
+            using (Stream responseStream = errorResponse.GetResponseStream())
+            {
+                StreamReader reader = new StreamReader(responseStream, Encoding.GetEncoding("utf-8"));
+                feed = reader.ReadToEnd();
+                return feed;
+            }
+        }
+    }
+    
     public static DateTime UnixTimeStampToDateTime(string sUnixTimeStamp)
     {
 
@@ -489,7 +735,6 @@ public class SocialMediaAggregator : System.Web.Services.WebService
 
 
 
-
 public class SocialMediaPost
 {
     public String type {get; set;}
@@ -556,4 +801,20 @@ public class Tweet
     public string created_at { get; set; }
     public string id { get; set; }
     public string text { get; set; }
+}
+
+
+public class BloggerPosts
+{
+    public List<BloggerPost> items { get; set; }
+}
+
+public class BloggerPost
+{
+    public String id { get; set; }
+    public String published { get; set; }
+    public DateTime DatePublished { get; set; }
+    public String title { get; set; }
+    public String content { get; set; }
+    public String[] labels { get; set; }
 }
