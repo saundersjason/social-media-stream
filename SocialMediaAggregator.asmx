@@ -19,7 +19,7 @@ using System.Web.Services;
 [WebService(Namespace = "http://simba.savannahstate.edu/socialstreamservice/",Description="Returns all social media posts.")]
 [WebServiceBinding(ConformsTo = WsiProfiles.BasicProfile1_1)]
 // To allow this Web Service to be called from script, using ASP.NET AJAX, uncomment the following line. 
-// [System.Web.Script.Services.ScriptService]
+[System.Web.Script.Services.ScriptService]
 public class SocialMediaAggregator : System.Web.Services.WebService 
 {
     const String facebookAccount = "savannahstate";
@@ -38,16 +38,7 @@ public class SocialMediaAggregator : System.Web.Services.WebService
         //
     }
 
-    // WEB SERVICE EXAMPLE
-    // The HelloWorld() example service returns the string Hello World.
-
-    [WebMethod]
-    public string HelloWorld()
-    {
-        return "Hello World";
-    }
-
-    [WebMethod]
+    [WebMethod(CacheDuration = 40)]
     public List<SocialMediaPost> GetPosts(Int32 numberOfPosts, String mediaType) {
         posts = new List<SocialMediaPost>();
         List<SocialMediaPost> sortedPosts;
@@ -153,6 +144,8 @@ public class SocialMediaAggregator : System.Web.Services.WebService
                         tempPost.type = "instagram";
                         tempPost.url = url;
                         tempPost.content = "<img src='" + image + "' /><p>" + UrlFinder(caption) + "</p>";
+                        tempPost.titleLink = "<a href='http://www.instagram.com/" + instagramAccount + "' target='_blank'>" + instagramAccount + "</a>";
+                        tempPost.socialLinkText = "Instagram";
                         posts.Add(tempPost);
                     }
                 }
@@ -283,6 +276,11 @@ public class SocialMediaAggregator : System.Web.Services.WebService
                         {
                             tempPost.content = caption;
                         }
+
+                        tempPost.content = FormatPost(tempPost.content, tempPost.type);
+                        
+                        tempPost.titleLink = "<a href='http://www.facebook.com/" + facebookAccount + "' target='_blank'>" + facebookAccount + "</a>";
+                        tempPost.socialLinkText = "Post";
                         posts.Add(tempPost);
                     }
                 }
@@ -410,7 +408,10 @@ public class SocialMediaAggregator : System.Web.Services.WebService
                         tempPost.postDate = twitterDateCreated;
                         tempPost.type = "twitter";
                         tempPost.url = url;
-                        tempPost.content = "<p>" + UrlFinder(caption) + "</p>"; ;
+                        tempPost.content = "<p>" + UrlFinder(caption) + "</p>";
+                        tempPost.content = FormatPost(tempPost.content, tempPost.type);
+                        tempPost.titleLink = "<a href='http://www.twitter.com/" + twitterAccount + "' target='_blank'>" + twitterAccount + "</a>";
+                        tempPost.socialLinkText = "Tweet";
                         posts.Add(tempPost);
                     }
                 }
@@ -462,44 +463,27 @@ public class SocialMediaAggregator : System.Web.Services.WebService
         }
     }
     
-    public SocialMediaPost FormatPost(SocialMediaPost post){
-        if(post.content!=null){
+    public String FormatPost(String content, String type){
+        if(content!=null){
             var regex = new Regex(@"(?<=#)\w+");
-            var matches = regex.Matches(post.content);
+            var matches = regex.Matches(content);
             String hashtagURL = "";
             
             foreach (Match m in matches)
             {
-                switch (post.type){
+                switch (type){
                     case "twitter":
                         hashtagURL = "http://www.twitter.com/hashtag/";
-                        post.content = post.content.Replace("#" + m.Value, "<a target='_blank' href='" + hashtagURL + m.Value + "'>#" + m.Value + "</a>");
+                        content = content.Replace("#" + m.Value, "<a target='_blank' href='" + hashtagURL + m.Value + "'>#" + m.Value + "</a>");
                         break;
                     case "facebook":
                         hashtagURL = "http://www.facebook.com/hashtag/";
-                        post.content = post.content.Replace("#" + m.Value, "<a target='_blank' href='" + hashtagURL + m.Value + "'>#" + m.Value + "</a>");
+                        content = content.Replace("#" + m.Value, "<a target='_blank' href='" + hashtagURL + m.Value + "'>#" + m.Value + "</a>");
                         break;
                 }
-                //String titleLink = "";
-                //String socialLinkText = "";
-                //switch (post.type){
-                //    case "twitter":
-                //        titleLink = "<a href='http://www.twitter.com/" + twitterAccount + "' target='_blank'>" + twitterAccount + "</a>";
-                //        socialLinkText = "Tweet";
-                //        break;
-                //    case "facebook":
-                //        titleLink = "<a href='http://www.facebook.com/" + facebookAccount + "' target='_blank'>" + facebookAccount + "</a>";
-                //        socialLinkText = "Post";
-                //        break;
-                //    case "instagram":
-                //        titleLink = "<a href='http://www.instagram.com/" + instagramAccount + "' target='_blank'>" + instagramAccount + "</a>";
-                //        socialLinkText = "Instagram";
-                //        break;
-                //}
-                //litStream.Text += "<div class='item " + post.type + "'><div class='postlogo logo-" + post.type + "'>" + titleLink + "</div><div class='item-content-wrapper'><span class='posttime'>" + post.postDate + "</span><br/>" + post.content + "<p class='post-btn-wrapper'><a class='post-btn' target='_blank' href='" + post.url + "'>View Original " + socialLinkText + "</a></p></div></div>";
             }
         }
-        return post;
+        return content;
     }
 }
 
@@ -512,6 +496,8 @@ public class SocialMediaPost
     public DateTime postDate { get; set; }
     public String url { get; set; }
     public String content { get; set; }
+    public String titleLink { get; set; }
+    public String socialLinkText { get; set; }
 }
 
 
