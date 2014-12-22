@@ -17,7 +17,7 @@ using System.Web.Script.Serialization;
 using System.Web.Services;
 using System.Xml.Linq;
 
-[WebService(Namespace = "http://simba.savannahstate.edu/socialstreamservice/",Description="Returns all social media posts.")]
+[WebService(Namespace = "http://www.savannahstate.edu",Description="Returns all social media posts.")]
 [WebServiceBinding(ConformsTo = WsiProfiles.BasicProfile1_1)]
 // To allow this Web Service to be called from script, using ASP.NET AJAX, uncomment the following line. 
 [System.Web.Script.Services.ScriptService]
@@ -218,26 +218,29 @@ public class SocialMediaAggregator : System.Web.Services.WebService
 
             if (bloggerPosts.items.Count() > 0)
             {
+                
                 posts = bloggerPosts.items.Where(p => p.labels.Contains(tag)).ToList();
-
-                foreach (BloggerPost post in posts)
+                if (posts.Count() > 0)
                 {
-                    try
+                    foreach (BloggerPost post in posts)
                     {
-                        post.DatePublished = Convert.ToDateTime(post.published);
-                    }
-                    catch (Exception ex)
-                    {
+                        try
+                        {
+                            post.DatePublished = Convert.ToDateTime(post.published);
+                        }
+                        catch (Exception ex)
+                        {
 
-                    }
+                        }
 
-                    try
-                    {
-                        post.content = Regex.Replace(post.content, @"(<img\/?[^>]+>)", @"", RegexOptions.IgnoreCase);
-                    }
-                    catch (Exception ex)
-                    {
+                        try
+                        {
+                            post.content = Regex.Replace(post.content, @"(<img\/?[^>]+>)", @"", RegexOptions.IgnoreCase);
+                        }
+                        catch (Exception ex)
+                        {
 
+                        }
                     }
                 }
                 return posts;
@@ -252,10 +255,56 @@ public class SocialMediaAggregator : System.Web.Services.WebService
             return null;
         }
     }
-    
-    
-    
-    
+
+
+
+    [WebMethod(CacheDuration = 40)]
+    public List<SocialMediaPost> GetAllSocialPostsFiltered(Int32 numberOfPosts, String mediaType, String hashTag)
+    {
+        posts = new List<SocialMediaPost>();
+        List<SocialMediaPost> filteredPosts;
+        List<SocialMediaPost> sortedPosts;
+        if (mediaType == "instagram" || mediaType == "all")
+        {
+            GetInstagramFeed();
+        }
+        if (mediaType == "facebook" || mediaType == "all")
+        {
+            GetFacebookFeed();
+        }
+        if (mediaType == "twitter" || mediaType == "all")
+        {
+            GetTweetFeed();
+        }
+
+        if (posts.Count > 0)
+        {
+            if(!String.IsNullOrEmpty(hashTag)){
+                filteredPosts = posts.Where(p => p.content.ToLower().Contains(hashTag.ToLower())).ToList();
+            }else{
+                filteredPosts = posts;
+            }
+            
+            
+            if (numberOfPosts > 0)
+            {
+                sortedPosts = filteredPosts.OrderByDescending(o => o.postDate).Take(numberOfPosts).ToList();
+            }
+            else
+            {
+                sortedPosts = filteredPosts.OrderByDescending(o => o.postDate).ToList();
+            }
+
+        }
+        else
+        {
+            sortedPosts = posts;
+        }
+
+
+
+        return sortedPosts;
+    }
     
     [WebMethod(CacheDuration = 40)]
     public List<SocialMediaPost> GetAllSocialPosts(Int32 numberOfPosts, String mediaType) {
